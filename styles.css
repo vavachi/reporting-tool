@@ -120,7 +120,9 @@ h1 {
     overflow: auto;
     /* Handle both vertical and horizontal scroll */
     border: 1px solid #ddd;
-    border-radius: 4px;
+    border-top: none;
+    /* Merge with toolbar */
+    border-radius: 0 0 4px 4px;
 }
 
 table {
@@ -251,8 +253,15 @@ tr:hover {
 .toolbar {
     display: flex;
     gap: 15px;
-    margin-bottom: 20px;
     align-items: center;
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-bottom: none;
+    /* Merge with table */
+    border-radius: 4px 4px 0 0;
+    padding: 10px 15px;
+    margin-bottom: 0;
+    /* Remove gap */
 }
 
 .search-bar {
