@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="reportingApp">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AngularJS Reporting Tool</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- AngularJS 1.x -->
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.6/angular.min.js"></script>
+
+    <!-- Angular Drag and Drop Lists -->
+    <script
+        src="https://cdnjs.cloudflare.com/ajax/libs/angular-drag-and-drop-lists/2.1.0/angular-drag-and-drop-lists.min.js"></script>
+
+    <!-- SheetJS (xlsx) -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+    <script src="app.js"></script>
+</head>
+
+<body ng-controller="ReportController">
+
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <h3><i class="fas fa-database"></i> Datasets</h3>
+            <ul class="dataset-list">
+                <li ng-repeat="ds in datasets">
+                    <label>
+                        <input type="checkbox" ng-model="ds.selected" ng-change="updateSelectedDatasets()">
+                        {{ ds.name }}
+                    </label>
+                </li>
+            </ul>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="container">
+                <h1><i class="fas fa-chart-bar"></i> Dynamic Reporting Tool</h1>
+
+                <!-- Join Configuration -->
+                <div class="join-config" ng-if="showJoinConfig"
+                    style="margin-bottom: 20px; padding: 15px; background: #e8f6f3; border-radius: 5px; border: 1px solid #16a085;">
+                    <strong>Join Configuration:</strong>
+                    <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span>Add Join Key:</span>
+                            <select ng-model="keyToAdd" ng-change="addJoinKey(keyToAdd); keyToAdd=''"
+                                style="padding: 5px; border-radius: 4px; border: 1px solid #ccc; min-width: 150px;">
+                                <option value="" disabled selected>Select column...</option>
+                                <option ng-repeat="col in commonColumns" value="{{col}}"
+                                    ng-disabled="selectedJoinKeys[col]">{{col}}</option>
+                            </select>
+                        </div>
+
+                        <div class="selected-keys-chips" style="display: flex; flex-wrap: wrap; gap: 5px;">
+                            <span ng-repeat="(key, val) in selectedJoinKeys" ng-if="val" class="chip">
+                                {{key}} <i class="fas fa-times" ng-click="removeJoinKey(key)"></i>
+                            </span>
+                        </div>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <button ng-click="mergeDatasets()"
+                            style="padding: 5px 15px; background: #16a085; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            <i class="fas fa-link"></i> Merge & Generate Report
+                        </button>
+                    </div>
+                </div>
+
+                <div class="toolbar">
+                    <!-- Search Bar -->
+                    <div class="search-bar">
+                        <input type="text" ng-model="searchQuery" ng-change="processData()"
+                            ng-model-options="{ debounce: 300 }" placeholder="Search...">
+                    </div>
+
+                    <!-- Export Button -->
+                    <button ng-click="exportToExcel()" class="btn-export" title="Export to Excel">
+                        <i class="fas fa-file-excel"></i> Export to Excel
+                    </button>
+                </div>
+
+                <!-- Group By Area -->
+                <div class="drop-zone" dnd-list="groupedColumns" dnd-drop="onDrop(item)">
+                    <div class="placeholder" ng-if="groupedColumns.length === 0">
+                        Drag column headers here to group by that column
+                    </div>
+                    <div class="grouped-column" ng-repeat="col in groupedColumns" dnd-draggable="col"
+                        dnd-moved="groupedColumns.splice($index, 1); updateGrouping()" dnd-effect-allowed="move">
+                        {{ col.label }}
+                        <span class="remove-btn" ng-click="removeGroup($index)">&times;</span>
+                    </div>
+                </div>
+
+                <!-- Reporting Table -->
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th ng-repeat="col in availableColumns" dnd-draggable="col" dnd-effect-allowed="copy"
+                                    dnd-copied="onHeaderDrag(col)" class="draggable-header" ng-click="sortBy(col.field)"
+                                    ng-class="{'sticky-col': $first}">
+                                    {{ col.label }}
+                                    <span ng-show="sortField === col.field">
+                                        <i class="fas" ng-class="sortReverse ? 'fa-sort-up' : 'fa-sort-down'"></i>
+                                    </span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody ng-repeat="row in pagedData">
+                            <!-- Grouped Data Rendering -->
+                            <tr ng-if="row.isGroup" class="group-header" ng-click="toggleGroup(row)">
+                                <td colspan="{{ availableColumns.length }}">
+                                    <span class="group-indent" ng-style="{ 'padding-left': (row.level * 20) + 'px' }">
+                                        <i class="fas"
+                                            ng-class="row.expanded ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+                                    </span>
+                                    {{ row.groupField }}: {{ row.groupValue }} ({{ row.count }} items)
+                                </td>
+                            </tr>
+                            <tr ng-if="!row.isGroup && row.visible">
+                                <td ng-repeat="col in availableColumns" ng-class="{'sticky-col': $first}">
+                                    {{ row[col.field] }}
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tbody ng-if="pagedData.length === 0">
+                            <!-- Fallback for no data -->
+                            <tr>
+                                <td colspan="{{ availableColumns.length }}" style="text-align: center;">No data
+                                    available</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination Controls -->
+                <div class="pagination-controls"
+                    style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px;">
+                    <div>
+                        <button ng-click="prevPage()" ng-disabled="currentPage === 1"
+                            style="padding: 5px 10px; cursor: pointer;">Previous</button>
+                        <span style="margin: 0 10px;">Page {{currentPage}} of {{totalPages}}</span>
+                        <button ng-click="nextPage()" ng-disabled="currentPage === totalPages"
+                            style="padding: 5px 10px; cursor: pointer;">Next</button>
+                    </div>
+                    <div>
+                        <label>Items per page:
+                            <select ng-model="pageSize" ng-change="updatePagination()"
+                                ng-options="size for size in [5, 10, 20, 50]"
+                                style="padding: 5px; border-radius: 4px; border: 1px solid #ccc;">
+                            </select>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+</body>
+
+</html>

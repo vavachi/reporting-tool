@@ -1,0 +1,303 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f4f4f9;
+    color: #333;
+    margin: 0;
+    padding: 20px;
+}
+
+h1 {
+    color: #2c3e50;
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.app-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: 250px;
+    background-color: #2c3e50;
+    color: white;
+    padding: 20px;
+    flex-shrink: 0;
+}
+
+.sidebar h3 {
+    color: #ecf0f1;
+    border-bottom: 1px solid #34495e;
+    padding-bottom: 10px;
+    margin-top: 0;
+}
+
+.dataset-list {
+    list-style: none;
+    padding: 0;
+}
+
+.dataset-list li {
+    margin-bottom: 10px;
+}
+
+.dataset-list label {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.main-content {
+    flex-grow: 1;
+    padding: 20px;
+    background-color: #f4f4f9;
+    overflow-x: hidden;
+}
+
+.container {
+    max-width: 100%;
+    /* Allow full width in main content */
+    margin: 0 auto;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Drag and Drop Area */
+.drop-zone {
+    border: 2px dashed #bdc3c7;
+    border-radius: 5px;
+    padding: 20px;
+    margin-bottom: 20px;
+    background-color: #ecf0f1;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.drop-zone.drag-over {
+    border-color: #3498db;
+    background-color: #e8f6f3;
+}
+
+.placeholder {
+    color: #7f8c8d;
+    font-style: italic;
+    width: 100%;
+    text-align: center;
+}
+
+.grouped-column {
+    background-color: #3498db;
+    color: white;
+    padding: 8px 15px;
+    border-radius: 20px;
+    cursor: grab;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9em;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.grouped-column .remove-btn {
+    cursor: pointer;
+    font-weight: bold;
+    opacity: 0.7;
+}
+
+.grouped-column .remove-btn:hover {
+    opacity: 1;
+}
+
+/* Table Styles */
+.table-container {
+    max-height: 500px;
+    overflow: auto;
+    /* Handle both vertical and horizontal scroll */
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th,
+td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+    white-space: nowrap;
+    /* Prevent wrapping to force horizontal scroll */
+}
+
+th {
+    background-color: #2c3e50;
+    color: white;
+    cursor: pointer;
+    user-select: none;
+    position: sticky;
+    /* Sticky Header */
+    top: 0;
+    z-index: 10;
+}
+
+th:hover {
+    background-color: #34495e;
+}
+
+th.draggable-header {
+    cursor: grab;
+}
+
+/* Sticky Column Styles */
+.sticky-col {
+    position: sticky;
+    left: 0;
+    background-color: white;
+    z-index: 5;
+    border-right: 1px solid #ddd;
+    /* Optional: Separator */
+}
+
+th.sticky-col {
+    z-index: 20;
+    /* Higher than normal headers (10) */
+    background-color: #2c3e50;
+    /* Match header background */
+}
+
+/* Ensure group headers span correctly over sticky cols if needed, 
+   but they are usually full width. 
+   However, if a group header is scrolled, it should probably be sticky too?
+   For now, we just stick the first column of data rows.
+*/
+
+tr:hover {
+    background-color: #f1f1f1;
+}
+
+.group-header {
+    background-color: #e8f6f3;
+    font-weight: bold;
+    color: #16a085;
+    cursor: pointer;
+}
+
+.group-header:hover {
+    background-color: #d1f2eb;
+}
+
+.group-indent {
+    display: inline-block;
+    width: 20px;
+}
+
+.sort-icon {
+    margin-left: 5px;
+    font-size: 0.8em;
+}
+
+/* Animations */
+.animate-repeat.ng-move,
+.animate-repeat.ng-enter,
+.animate-repeat.ng-leave {
+    transition: all linear 0.2s;
+}
+
+.animate-repeat.ng-leave.ng-leave-active,
+.animate-repeat.ng-move,
+.animate-repeat.ng-enter {
+    opacity: 0;
+    max-height: 0;
+}
+
+.animate-repeat.ng-leave,
+.animate-repeat.ng-move.ng-move-active,
+.animate-repeat.ng-enter.ng-enter-active {
+    opacity: 1;
+    max-height: 30px;
+}
+
+/* Chip Styles */
+.chip {
+    display: inline-flex;
+    align-items: center;
+    background-color: #3498db;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 0.9em;
+    gap: 5px;
+}
+
+.chip i {
+    cursor: pointer;
+    opacity: 0.7;
+    font-size: 0.8em;
+}
+
+.chip i:hover {
+    opacity: 1;
+}
+
+/* Toolbar Styles */
+.toolbar {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    align-items: center;
+}
+
+.search-bar {
+    flex-grow: 1;
+}
+
+.search-bar input {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: box-shadow 0.2s, border-color 0.2s;
+    box-sizing: border-box;
+}
+
+.search-bar input:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 2px 5px rgba(52, 152, 219, 0.2);
+}
+
+.btn-export {
+    padding: 12px 25px;
+    background-color: #27ae60;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.2s, transform 0.1s;
+    white-space: nowrap;
+}
+
+.btn-export:hover {
+    background-color: #219150;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-export:active {
+    transform: translateY(1px);
+}

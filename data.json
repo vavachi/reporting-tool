@@ -1,0 +1,12 @@
+[
+  { "id": 1, "product": "Laptop", "category": "Electronics", "region": "North", "amount": 1200, "date": "2023-01-15" },
+  { "id": 2, "product": "Mouse", "category": "Electronics", "region": "North", "amount": 25, "date": "2023-01-16" },
+  { "id": 3, "product": "Keyboard", "category": "Electronics", "region": "South", "amount": 45, "date": "2023-01-17" },
+  { "id": 4, "product": "Chair", "category": "Furniture", "region": "North", "amount": 150, "date": "2023-01-18" },
+  { "id": 5, "product": "Desk", "category": "Furniture", "region": "South", "amount": 300, "date": "2023-01-19" },
+  { "id": 6, "product": "Laptop", "category": "Electronics", "region": "East", "amount": 1150, "date": "2023-01-20" },
+  { "id": 7, "product": "Mouse", "category": "Electronics", "region": "West", "amount": 30, "date": "2023-01-21" },
+  { "id": 8, "product": "Headphones", "category": "Electronics", "region": "East", "amount": 80, "date": "2023-01-22" },
+  { "id": 9, "product": "Monitor", "category": "Electronics", "region": "West", "amount": 200, "date": "2023-01-23" },
+  { "id": 10, "product": "Chair", "category": "Furniture", "region": "East", "amount": 160, "date": "2023-01-24" }
+]
