@@ -10,8 +10,35 @@ app.directive('reportingTool', function () {
             <div class="container">
                 <h1><i class="fas fa-chart-bar"></i> Dynamic Reporting Tool</h1>
 
+                <!-- Sort By Area -->
+                <div class="drop-zone" dnd-list="sortedColumns" dnd-drop="onDropSort(item)">
+                    <div class="placeholder" ng-if="sortedColumns.length === 0">
+                        Drag column headers here to sort
+                    </div>
+                    <div class="grouped-column" ng-repeat="col in sortedColumns" dnd-draggable="col"
+                        dnd-moved="sortedColumns.splice($index, 1); processData()" dnd-effect-allowed="move">
+                        <span ng-click="toggleSortOrder(col)" style="cursor: pointer;">
+                             {{ col.label }} <i class="fas" ng-class="col.reverse ? 'fa-sort-down' : 'fa-sort-up'"></i>
+                        </span>
+                        <span class="remove-btn" ng-click="removeSort($index)"> &times;</span>
+                    </div>
+                </div>
+
+                <!-- Filter By Area -->
+                <div class="drop-zone" dnd-list="filteredColumns" dnd-drop="onDropFilter(item)">
+                    <div class="placeholder" ng-if="filteredColumns.length === 0">
+                        Drag column headers here to filter
+                    </div>
+                    <div class="grouped-column filter-chip" ng-repeat="col in filteredColumns" dnd-draggable="col"
+                        dnd-moved="filteredColumns.splice($index, 1); processData()" dnd-effect-allowed="move">
+                        {{ col.label }}: 
+                        <input type="text" ng-model="col.filterValue" ng-change="processData()" ng-model-options="{debounce: 300}" placeholder="Value..." class="chip-input">
+                        <span class="remove-btn" ng-click="removeFilter($index)">&times;</span>
+                    </div>
+                </div>
+
                 <!-- Group By Area -->
-                <div class="drop-zone" dnd-list="groupedColumns" dnd-drop="onDrop(item)">
+                <div class="drop-zone" dnd-list="groupedColumns" dnd-drop="onDropGroup(item)">
                     <div class="placeholder" ng-if="groupedColumns.length === 0">
                         Drag column headers here to group by that column
                     </div>
@@ -117,6 +144,8 @@ app.directive('reportingTool', function () {
             $scope.rawData = [];
             $scope.groupedData = [];
             $scope.groupedColumns = [];
+            $scope.sortedColumns = [];
+            $scope.filteredColumns = [];
 
             $scope.sortField = 'id';
             $scope.sortReverse = false;
@@ -126,7 +155,9 @@ app.directive('reportingTool', function () {
             $scope.$watch('data', function (newData) {
                 if (newData) {
                     $scope.rawData = angular.copy(newData);
-                    $scope.groupedColumns = []; // Reset grouping on new dataset
+                    $scope.groupedColumns = [];
+                    $scope.sortedColumns = [];
+                    $scope.filteredColumns = [];
                     $scope.searchQuery = '';
                     $scope.updateAvailableColumns();
                     $scope.processData();
@@ -176,34 +207,54 @@ app.directive('reportingTool', function () {
                 });
             };
 
-            // Sorting Logic
-            $scope.sortBy = function (field) {
-                if ($scope.sortField === field) {
-                    $scope.sortReverse = !$scope.sortReverse;
-                } else {
-                    $scope.sortField = field;
-                    $scope.sortReverse = false;
+            // Drag Handlers
+            $scope.onDropGroup = function (item) {
+                if (!$scope.groupedColumns.some(c => c.field === item.field)) {
+                    $scope.groupedColumns.push(angular.copy(item));
+                    $scope.processData();
                 }
-                $scope.processData();
+                return true;
             };
 
-            // Grouping Logic
-            $scope.onDrop = function (item) {
-                var exists = $scope.groupedColumns.some(function (col) {
-                    return col.field === item.field;
-                });
+            $scope.onDropSort = function (item) {
+                if (!$scope.sortedColumns.some(c => c.field === item.field)) {
+                    var newItem = angular.copy(item);
+                    newItem.reverse = false; // Default Asc
+                    $scope.sortedColumns.push(newItem);
+                    $scope.processData();
+                }
+                return true;
+            };
 
-                if (!exists) {
-                    $scope.groupedColumns.push(item);
-                    $scope.updateGrouping();
+            $scope.onDropFilter = function (item) {
+                if (!$scope.filteredColumns.some(c => c.field === item.field)) {
+                    var newItem = angular.copy(item);
+                    newItem.filterValue = '';
+                    $scope.filteredColumns.push(newItem);
+                    $scope.processData(); // Likely no change yet as filter is empty
                 }
                 return true;
             };
 
             $scope.removeGroup = function (index) {
                 $scope.groupedColumns.splice(index, 1);
-                $scope.updateGrouping();
+                $scope.processData();
             };
+
+            $scope.removeSort = function (index) {
+                $scope.sortedColumns.splice(index, 1);
+                $scope.processData();
+            };
+
+            $scope.removeFilter = function (index) {
+                $scope.filteredColumns.splice(index, 1);
+                $scope.processData();
+            };
+
+            $scope.toggleSortOrder = function (col) {
+                col.reverse = !col.reverse;
+                $scope.processData();
+            }
 
             $scope.updateGrouping = function () {
                 $scope.processData();
@@ -224,13 +275,48 @@ app.directive('reportingTool', function () {
             $scope.processData = function () {
                 var data = angular.copy($scope.rawData);
 
-                // 0. Filter
+                // 0. Global Filter
                 if ($scope.searchQuery) {
                     data = $filter('filter')(data, $scope.searchQuery);
                 }
 
+                // 0.5 Column Specific Filters
+                if ($scope.filteredColumns.length > 0) {
+                    data = data.filter(function (item) {
+                        return $scope.filteredColumns.every(function (col) {
+                            if (!col.filterValue) return true;
+                            var val = item[col.field];
+                            if (val === null || val === undefined) return false;
+                            return val.toString().toLowerCase().includes(col.filterValue.toLowerCase());
+                        });
+                    });
+                }
+
                 // 1. Sort
-                data = $filter('orderBy')(data, $scope.sortField, $scope.sortReverse);
+                // Priority: Dragged Sort Columns > Group Columns (implicit) > Clicked Header (legacy/fallback)
+                var sortPredicates = [];
+
+                // Grouping implicitly sorts
+                $scope.groupedColumns.forEach(function (col) {
+                    sortPredicates.push(col.field);
+                });
+
+                // Explicit Sorts
+                $scope.sortedColumns.forEach(function (col) {
+                    sortPredicates.push((col.reverse ? '-' : '+') + col.field);
+                });
+
+                // Fallback to table header sort if no explicit sort
+                // (Optional: You might want to remove table header sorting if using DnD sort exclusively, 
+                // but keeping it as a fallback or secondary is fine. Let's append it last)
+                if ($scope.sortField) {
+                    sortPredicates.push(($scope.sortReverse ? '-' : '+') + $scope.sortField);
+                }
+
+                if (sortPredicates.length > 0) {
+                    data = $filter('orderBy')(data, sortPredicates);
+                }
+
 
                 // Calculate Grand Totals
                 $scope.grandTotals = {};

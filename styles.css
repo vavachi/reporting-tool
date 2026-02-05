@@ -115,6 +115,30 @@ h1 {
     opacity: 1;
 }
 
+.chip-input {
+    border: none;
+    border-radius: 4px;
+    padding: 2px 5px;
+    margin-left: 5px;
+    color: black;
+    font-size: 0.9em;
+    width: 80px;
+}
+
+.chip-input:focus {
+    outline: none;
+    background-color: #e8f6f3;
+}
+
+.filter-chip {
+    background-color: #27ae60;
+    /* Vary color for filters */
+}
+
+.grouped-column i {
+    margin-left: 5px;
+}
+
 /* Table Styles */
 .table-container {
     max-height: 500px;
