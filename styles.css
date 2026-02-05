@@ -50,6 +50,7 @@ h1 {
 
 .main-content {
     flex-grow: 1;
+    min-width: 0;
     padding: 20px;
     background-color: #f4f4f9;
     overflow-x: hidden;

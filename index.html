@@ -23,7 +23,35 @@
 
 <body ng-controller="ReportController">
 
-    <reporting-tool datasets="datasets"></reporting-tool>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <h3><i class="fas fa-database"></i> Datasets</h3>
+            <ul class="dataset-list">
+                <li ng-repeat="ds in datasets">
+                    <label style="cursor: pointer; display: block; padding: 5px;">
+                        <input type="radio" ng-model="$parent.selectedDatasetId" ng-value="ds.id"
+                            ng-change="loadDataset(ds.id)">
+                        {{ ds.name }}
+                    </label>
+                </li>
+            </ul>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div ng-if="isLoading" style="padding: 20px; text-align: center; font-size: 1.2em; color: #666;">
+                <i class="fas fa-spinner fa-spin"></i> Loading data...
+            </div>
+
+            <div ng-if="!isLoading && currentReportData">
+                <reporting-tool data="currentReportData"></reporting-tool>
+            </div>
+            <div ng-if="!isLoading && !currentReportData" style="padding: 20px; text-align: center; color: #666;">
+                Select a dataset to view the report.
+            </div>
+        </main>
+    </div>
 
 </body>
 
