@@ -202,7 +202,16 @@ app.directive('reportingTool', function () {
                 var sampleSize = Math.min($scope.rawData.length, 5);
                 var keys = Object.keys($scope.rawData[0]);
 
+                // predefined variable for store known non numeric fields
+                $scope.nonNumericFields = ['id', 'sku', 'zip', 'phone'];
+
                 keys.forEach(function (key) {
+                    // Check if strictly non-numeric based on config
+                    if ($scope.nonNumericFields.includes(key.toLowerCase())) {
+                        fieldTypes[key] = false;
+                        return;
+                    }
+
                     var isNumeric = true;
                     for (var i = 0; i < sampleSize; i++) {
                         var val = $scope.rawData[i][key];
