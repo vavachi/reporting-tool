@@ -94,7 +94,7 @@ app.directive('reportingTool', function () {
                             <!-- Grouped Data Rendering -->
                             <tr ng-if="row.isGroup" class="group-header" ng-click="toggleGroup(row)">
                                 <td colspan="{{ availableColumns.length }}">
-                                    <span class="group-indent" ng-style="{ 'padding-left': (row.level * 20) + 'px' }">
+                                    <span class="group-indent" ng-style="{ 'margin-left': (row.level * 20) + 'px' }">
                                         <i class="fas"
                                             ng-class="row.expanded ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
                                     </span>
