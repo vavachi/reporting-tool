@@ -186,11 +186,12 @@ th.draggable-header {
 /* Sticky Column Styles */
 .sticky-col {
     position: sticky;
-    left: 0;
+    /* left: 0;  <-- Removed to allow dynamic calculation via ng-style */
     background-color: white;
     z-index: 5;
-    border-right: 1px solid #ddd;
-    /* Optional: Separator */
+    border-right: 2px solid #ddd;
+    /* distinct separator */
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
 }
 
 th.sticky-col {
@@ -199,6 +200,31 @@ th.sticky-col {
     background-color: #2c3e50;
     /* Match header background */
 }
+
+/* Fix sticky background on hover */
+tr:hover .sticky-col {
+    background-color: #f1f1f1;
+}
+
+/* Fix sticky background on summary rows */
+tr[style*="background-color: #fce4ec"] .sticky-col {
+    background-color: #fce4ec;
+}
+
+/* Fix sticky background on footer */
+tfoot tr td.sticky-col {
+    background-color: #e3f2fd;
+}
+
+/* Ideally we should use a class for summary rows instead of inline style to make this cleaner,
+   but we will target the specific structure or add a class in app.js if we could.
+   For now, we know summary rows have isSummary.
+   Let's assume we can't easily change the inline style in this step without touching HTML again.
+   Wait, we can target the row if we had a class.
+   The HTML has `tr ng-if="row.isSummary" style="..."`. 
+   The inline style on TR doesn't cascade its background color to the TD if TD has its own background color.
+   We need to match the colors.
+*/
 
 /* Ensure group headers span correctly over sticky cols if needed, 
    but they are usually full width. 

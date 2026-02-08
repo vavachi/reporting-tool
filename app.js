@@ -10,6 +10,19 @@ app.directive('reportingTool', function () {
             <div class="container">
                 <h1><i class="fas fa-chart-bar"></i> Dynamic Reporting Tool</h1>
 
+                <!-- Frozen Columns Area -->
+                <div class="drop-zone" dnd-list="frozenColumns" dnd-drop="onDropFrozen(item)">
+                    <div class="placeholder" ng-if="frozenColumns.length === 0">
+                        Drag column headers here to freeze them to the left
+                    </div>
+                    <div class="grouped-column" ng-repeat="col in frozenColumns" dnd-draggable="col"
+                        dnd-moved="frozenColumns.splice($index, 1); processData()" dnd-effect-allowed="move"
+                        style="background-color: #8e44ad;">
+                        <i class="fas fa-snowflake"></i> {{ col.label }}
+                        <span class="remove-btn" ng-click="removeFrozen($index)">&times;</span>
+                    </div>
+                </div>
+
                 <!-- Sort By Area -->
                 <div class="drop-zone" dnd-list="sortedColumns" dnd-drop="onDropSort(item)">
                     <div class="placeholder" ng-if="sortedColumns.length === 0">
@@ -68,7 +81,8 @@ app.directive('reportingTool', function () {
                         <thead>
                             <tr>
                                 <th ng-repeat="col in availableColumns" dnd-draggable="col" dnd-effect-allowed="copy"
-                                    ng-class="{'sticky-col': $first}" ng-style="{'text-align': col.isNumeric ? 'right' : 'left'}">
+                                    ng-class="{'sticky-col': col.frozen}" 
+                                    ng-style="{'text-align': col.isNumeric ? 'right' : 'left', 'left': col.stickyLeft + 'px'}">
                                     {{ col.label }}
                                     <span ng-show="sortField === col.field">
                                         <i class="fas" ng-class="sortReverse ? 'fa-sort-up' : 'fa-sort-down'"></i>
@@ -88,13 +102,15 @@ app.directive('reportingTool', function () {
                                 </td>
                             </tr>
                             <tr ng-if="!row.isGroup && !row.isSummary && row.visible">
-                                <td ng-repeat="col in availableColumns" ng-class="{'sticky-col': $first}" ng-style="{'text-align': col.isNumeric ? 'right' : 'left'}">
+                                <td ng-repeat="col in availableColumns" ng-class="{'sticky-col': col.frozen}" 
+                                    ng-style="{'text-align': col.isNumeric ? 'right' : 'left', 'left': col.stickyLeft + 'px'}">
                                     {{ row[col.field] }}
                                 </td>
                             </tr>
                             <!-- Summary Row -->
                             <tr ng-if="row.isSummary" style="background-color: #fce4ec; font-weight: bold;">
-                                <td ng-repeat="col in availableColumns" ng-class="{'sticky-col': $first}" ng-style="{'text-align': col.isNumeric ? 'right' : 'left'}">
+                                <td ng-repeat="col in availableColumns" ng-class="{'sticky-col': col.frozen}" 
+                                    ng-style="{'text-align': col.isNumeric ? 'right' : 'left', 'left': col.stickyLeft + 'px'}">
                                     <span ng-if="$first" style="float: right; margin-right: 10px;">Total:</span>
                                     <span ng-if="col.hasTotal">{{ (row.sums[col.field] || 0) | number:2 }}</span>
                                 </td>
@@ -109,7 +125,8 @@ app.directive('reportingTool', function () {
                         </tbody>
                         <tfoot>
                             <tr style="background-color: #e3f2fd; font-weight: bold; border-top: 2px solid #aaa;">
-                                <td ng-repeat="col in availableColumns" ng-class="{'sticky-col': $first}" ng-style="{'text-align': col.isNumeric ? 'right' : 'left'}">
+                                <td ng-repeat="col in availableColumns" ng-class="{'sticky-col': col.frozen}" 
+                                    ng-style="{'text-align': col.isNumeric ? 'right' : 'left', 'left': col.stickyLeft + 'px'}">
                                     <span ng-if="$first">Grand Total:</span>
                                     <span ng-if="col.hasTotal">{{ (grandTotals[col.field] || 0) | number:2 }}</span>
                                 </td>
@@ -139,13 +156,14 @@ app.directive('reportingTool', function () {
                 </div>
             </div>
         `,
-        controller: ['$scope', '$filter', function ($scope, $filter) {
+        controller: ['$scope', '$filter', '$timeout', function ($scope, $filter, $timeout) {
             $scope.availableColumns = [];
             $scope.rawData = [];
             $scope.groupedData = [];
             $scope.groupedColumns = [];
             $scope.sortedColumns = [];
             $scope.filteredColumns = [];
+            $scope.frozenColumns = [];
 
             $scope.sortField = 'id';
             $scope.sortReverse = false;
@@ -158,6 +176,8 @@ app.directive('reportingTool', function () {
                     $scope.groupedColumns = [];
                     $scope.sortedColumns = [];
                     $scope.filteredColumns = [];
+                    // $scope.frozenColumns = []; // Keep frozen columns configuration
+                    $scope.searchQuery = '';
                     $scope.searchQuery = '';
                     $scope.updateAvailableColumns();
                     $scope.processData();
@@ -194,7 +214,22 @@ app.directive('reportingTool', function () {
                     fieldTypes[key] = isNumeric;
                 });
 
-                $scope.availableColumns = keys.filter(function (k) {
+                // Sort keys: Frozen columns first, then others
+                var frozenFields = $scope.frozenColumns.map(c => c.field);
+                var sortedKeys = [];
+
+                // Add frozen keys in order
+                frozenFields.forEach(function (fKey) {
+                    if (keys.includes(fKey)) sortedKeys.push(fKey);
+                });
+
+                // Add remaining keys
+                keys.forEach(function (key) {
+                    if (!sortedKeys.includes(key)) sortedKeys.push(key);
+                });
+
+
+                $scope.availableColumns = sortedKeys.filter(function (k) {
                     return k !== 'visible' && k !== 'isGroup' && k !== '$$hashKey';
                 }).map(function (k) {
                     var autoHasTotal = fieldTypes[k] && k.toLowerCase().indexOf('id') === -1;
@@ -202,9 +237,53 @@ app.directive('reportingTool', function () {
                         field: k,
                         label: formatLabel(k),
                         hasTotal: autoHasTotal,
-                        isNumeric: fieldTypes[k]
+                        isNumeric: fieldTypes[k],
+                        frozen: frozenFields.includes(k),
+                        stickyLeft: 0 // Default, will be updated by recalculateStickyOffsets
                     };
                 });
+
+                // Recalculate offsets after render
+                $timeout(function () {
+                    $scope.recalculateStickyOffsets();
+                }, 50);
+            };
+
+            $scope.recalculateStickyOffsets = function () {
+                // We need to find the headers for the sticky columns
+                // Using .table-container to scope the query in case of multiple tables (good practice)
+                var container = document.querySelector('.table-container');
+                if (!container) return;
+
+                var ths = container.querySelectorAll('th.sticky-col');
+
+                // console.log('Recalculating Sticky Offsets. Found sticky headers:', ths.length);
+
+                var currentLeft = 0;
+                var frozenCount = 0;
+                var anyChanges = false;
+
+                $scope.availableColumns.forEach(function (col) {
+                    if (col.frozen) {
+                        if (ths[frozenCount]) {
+                            var width = ths[frozenCount].offsetWidth;
+                            var oldLeft = col.stickyLeft;
+
+                            col.stickyLeft = currentLeft;
+                            // console.log('Col:', col.label, 'Width:', width, 'New Left:', currentLeft);
+
+                            if (oldLeft !== currentLeft) anyChanges = true;
+
+                            currentLeft += width;
+                            frozenCount++;
+                        }
+                    }
+                });
+
+                // If the DOM wasn't ready (width 0), try again
+                if (frozenCount > 0 && currentLeft === 0) {
+                    $timeout($scope.recalculateStickyOffsets, 50);
+                }
             };
 
             // Drag Handlers
@@ -236,6 +315,16 @@ app.directive('reportingTool', function () {
                 return true;
             };
 
+            $scope.onDropFrozen = function (item) {
+                if (!$scope.frozenColumns.some(c => c.field === item.field)) {
+                    $scope.frozenColumns.push(angular.copy(item));
+                    $scope.updateAvailableColumns(); // Re-sort columns
+                    // We don't strictly need to processData if we only change column order, 
+                    // but if it affects rendering we might.
+                }
+                return true;
+            };
+
             $scope.removeGroup = function (index) {
                 $scope.groupedColumns.splice(index, 1);
                 $scope.processData();
@@ -249,6 +338,11 @@ app.directive('reportingTool', function () {
             $scope.removeFilter = function (index) {
                 $scope.filteredColumns.splice(index, 1);
                 $scope.processData();
+            };
+
+            $scope.removeFrozen = function (index) {
+                $scope.frozenColumns.splice(index, 1);
+                $scope.updateAvailableColumns();
             };
 
             $scope.toggleSortOrder = function (col) {
@@ -345,6 +439,11 @@ app.directive('reportingTool', function () {
 
                 // 3. Paginate
                 $scope.updatePagination();
+
+                // Recalculate sticky offsets in case widths changed
+                $timeout(function () {
+                    $scope.recalculateStickyOffsets();
+                }, 50);
             };
 
             $scope.updatePagination = function () {
