@@ -565,8 +565,42 @@ app.directive('reportingTool', function () {
 
             $scope.exportToExcel = function () {
                 var data = angular.copy($scope.rawData);
-                if ($scope.searchQuery) data = $filter('filter')(data, $scope.searchQuery);
-                data = $filter('orderBy')(data, $scope.sortField, $scope.sortReverse);
+
+                // 0. Global Filter
+                if ($scope.searchQuery) {
+                    data = $filter('filter')(data, $scope.searchQuery);
+                }
+
+                // 0.5 Column Specific Filters
+                if ($scope.filteredColumns.length > 0) {
+                    data = data.filter(function (item) {
+                        return $scope.filteredColumns.every(function (col) {
+                            if (!col.filterValue) return true;
+                            var val = item[col.field];
+                            if (val === null || val === undefined) return false;
+                            return val.toString().toLowerCase().includes(col.filterValue.toLowerCase());
+                        });
+                    });
+                }
+
+                // 1. Sort
+                var sortPredicates = [];
+                // Grouping implicitly sorts
+                $scope.groupedColumns.forEach(function (col) {
+                    sortPredicates.push(col.field);
+                });
+                // Explicit Sorts
+                $scope.sortedColumns.forEach(function (col) {
+                    sortPredicates.push((col.reverse ? '-' : '+') + col.field);
+                });
+                // Fallback
+                if ($scope.sortField) {
+                    sortPredicates.push(($scope.sortReverse ? '-' : '+') + $scope.sortField);
+                }
+
+                if (sortPredicates.length > 0) {
+                    data = $filter('orderBy')(data, sortPredicates);
+                }
 
                 var sheetData = [];
                 var headers = $scope.availableColumns.map(function (c) { return c.label; });
@@ -616,6 +650,7 @@ app.directive('reportingTool', function () {
                 });
                 sheetData.push([]);
                 sheetData.push(grandTotalRow);
+
 
                 var ws = XLSX.utils.aoa_to_sheet(sheetData);
                 var wb = XLSX.utils.book_new();
